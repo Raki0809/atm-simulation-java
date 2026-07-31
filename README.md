@@ -13,5 +13,5 @@ with secure authentication and robust input handling.
 Java, Scanner, Exception Handling, Regex
 
 ## How to Run
-javac ATMSimulation.java
-java ATMSimulation
+javac Simulation.java
+java Simulation
