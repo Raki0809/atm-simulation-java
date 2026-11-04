@@ -1,177 +1,11 @@
 import java.util.*;
+import repository.AccountRepository;
 import java.time.LocalDateTime;
-
-class Account {
-
-    private String accountNumber;
-    private String pinCode;
-    private double accountBalance;
-    private boolean isLocked = false;
-    private Scanner sc;
-    
-    private ArrayList<String> transactionHistory = new ArrayList<>();
-
-    public Account(String accountNumber, String pinCode, double accountBalance, Scanner sc) {
-        this.accountNumber = accountNumber;
-        this.pinCode = pinCode;
-        this.accountBalance = accountBalance;
-        this.sc = sc;
-    }
-    //=============Transaction History==========================================
-    public void viewTransactionHistory() {
-
-    if (transactionHistory.isEmpty()) {
-        System.out.println("No transactions available.");
-        return;
-    }
-
-    System.out.println("====== Transaction History ======");
-
-    for (String transaction : transactionHistory) {
-        System.out.println(transaction);
-    }
-}
-    // ========================= PIN CHECK =========================
-
-    public boolean pinCheck() {
-
-        if (isLocked) {
-            System.out.println("Your account is locked.");
-            return false;
-        }
-
-        int attempts = 3;
-
-        while (attempts > 0) {
-
-            System.out.print("Enter PIN: ");
-            String enteredPin = sc.nextLine();
-
-            if (!enteredPin.matches("\\d{6}")) {
-                attempts--;
-                System.out.println("PIN must contain 6 digits.");
-                System.out.println("Attempts left: " + attempts);
-                continue;
-            }
-
-            if (enteredPin.equals(pinCode)) {
-                System.out.println("PIN verified successfully.");
-                return true;
-            }
-
-            attempts--;
-            System.out.println("Incorrect PIN.");
-            System.out.println("Attempts left: " + attempts);
-        }
-
-        isLocked = true;
-        System.out.println("Your account has been locked due to multiple incorrect attempts.");
-
-        return false;
-    }
-
-    // ========================= DEPOSIT =========================
-
-    public void deposit() {
-
-    System.out.print("Enter amount to deposit: ");
-
-    double value;
-
-    while (true) {
-
-        try {
-            value = sc.nextDouble();
-            sc.nextLine();
-
-            if (value >= 2000) {
-                break;
-            }
-
-            System.out.println("Amount should be greater than or equal to 2000.");
-
-        } catch (InputMismatchException e) {
-
-            System.out.println("Enter a valid amount.");
-            sc.nextLine();
-        }
-    }
-
-    if (!pinCheck()) {
-        return;   // amount discarded, nothing recorded
-    }
-
-    accountBalance += value;
-
-    System.out.println(value + " deposited successfully.");
-    System.out.println("Available Balance: " + accountBalance);
-
-    transactionHistory.add("Deposited: " + value + " | Balance: " + accountBalance + " | Time: " + LocalDateTime.now());
-}
-
-    // ========================= WITHDRAW =========================
-
-    public void withdraw() {
-
-    System.out.print("Enter amount to withdraw: ");
-
-    double value;
-
-    while (true) {
-
-        try {
-            value = sc.nextDouble();
-            sc.nextLine();
-
-            if (value < 500) {
-                System.out.println("Minimum withdrawal amount is 500.");
-                continue;
-            }
-
-            if (value > accountBalance) {
-                System.out.println("Insufficient balance.");
-                continue;
-            }
-
-            break;
-
-        } catch (InputMismatchException e) {
-
-            System.out.println("Enter a valid amount.");
-            sc.nextLine();
-        }
-    }
-
-    if (!pinCheck()) {
-        return;
-    }
-
-    accountBalance -= value;
-
-    System.out.println(value + " withdrawn successfully.");
-    System.out.println("Available Balance: " + accountBalance);
-
-    transactionHistory.add("Withdrawn: " + value + " | Balance: " + accountBalance + " | Time: " + LocalDateTime.now());
-}
-
-    // ========================= CHECK BALANCE =========================
-
-    public void checkBalance() {
-
-        if (!pinCheck()) {
-            return;
-        }
-
-        System.out.println("Available Balance: " + accountBalance);
-    }
-}
-
+import model.Account;
 
 class Main {
 
     static Scanner sc = new Scanner(System.in);
-
-    static HashMap<String, Account> accounts = new HashMap<>();
 
     // ========================= EXISTING ACCOUNT =========================
 
@@ -194,11 +28,12 @@ class Main {
                 continue;
             }
 
-            if (accounts.containsKey(accountNumber)) {
+            if (AccountRepository.accountExists(accountNumber)) {
 
                 System.out.println("Account Found!");
-                Account account = accounts.get(accountNumber);
-                atmMenu(account);
+                Account account = AccountRepository.getAccount(accountNumber, sc);
+
+            atmMenu(account);
 
                 return;
             }
@@ -230,10 +65,9 @@ class Main {
                 continue;
             }
 
-            if (accounts.containsKey(accountNumber)) {
-
-                System.out.println("Account already exists.");
-                System.out.println("Please enter another Account Number.");
+            if (AccountRepository.accountExists(accountNumber)){
+                System.out.println("Account already exists!");
+                System.out.println("Please try again with a different account number.");
                 continue;
             }
 
@@ -286,12 +120,13 @@ class Main {
         }
 
 
-        Account account =
-            new Account(accountNumber, pinCode, accountBalance, sc);
-
-        accounts.put(accountNumber, account);
-
-        System.out.println("Account created successfully!");
+        if (AccountRepository.saveAccount(
+            accountNumber, pinCode, accountBalance, false)) {
+            System.out.println("Account created successfully!");
+            } 
+        else {
+                System.out.println("Account creation failed!");
+            }
     }
 
 
@@ -348,6 +183,11 @@ class Main {
 
                 default:
                     System.out.println("Please enter a valid choice.");
+            }
+            if (account.isAccountLocked()) {
+                System.out.println("Your account has been locked.");
+                System.out.println("Exiting ATM...");
+                return;
             }
 
         } while (choice != 5);
