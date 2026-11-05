@@ -4,17 +4,18 @@ import java.util.*;
 import java.time.LocalDateTime;
 import repository.AccountRepository;
 import org.mindrot.jbcrypt.BCrypt;
+import java.math.BigDecimal;
 
 public class Account{
 
     private String accountNumber;
     private String pinCode;
-    private double accountBalance;
+    private BigDecimal accountBalance;
     private boolean isLocked = false;
     private LocalDateTime lockedUntil;
     private Scanner sc;
 
-    public Account(String accountNumber, String pinCode, double accountBalance,boolean isLocked,LocalDateTime lockedUntil,Scanner sc) {
+    public Account(String accountNumber, String pinCode, BigDecimal accountBalance,boolean isLocked,LocalDateTime lockedUntil,Scanner sc) {
         this.accountNumber = accountNumber;
         this.pinCode = pinCode;
         this.accountBalance = accountBalance;
@@ -88,21 +89,21 @@ public class Account{
 
     System.out.print("Enter amount to deposit: ");
 
-    double value;
+    BigDecimal value;
 
     while (true) {
 
         try {
-            value = sc.nextDouble();
-            sc.nextLine();
+            value = new BigDecimal(sc.nextLine());
 
-            if (value >= 500) {
-                break;
+
+            if (value.compareTo(new BigDecimal("500"))<0) {
+                System.out.println("Amount should be greater than or equal to 500.");
+                continue;
             }
+            break;
 
-            System.out.println("Amount should be greater than or equal to 500.");
-
-        } catch (InputMismatchException e) {
+        } catch (NumberFormatException e) {
 
             System.out.println("Enter a valid amount.");
             sc.nextLine();
@@ -113,7 +114,7 @@ public class Account{
         return;  
     }
     if(AccountRepository.deposit(accountNumber,value)){
-        accountBalance += value;
+        accountBalance = accountBalance.add(value);
 
         System.out.println(value + " deposited successfully.");
         System.out.println("Available Balance: " + accountBalance);
@@ -138,30 +139,28 @@ public class Account{
 
     System.out.print("Enter amount to withdraw: ");
 
-    double value;
+    BigDecimal value;
 
     while (true) {
 
         try {
-            value = sc.nextDouble();
-            sc.nextLine();
+            value = new BigDecimal(sc.nextLine());
 
-            if (value < 500) {
+            if (value.compareTo(new BigDecimal("500"))<0) {
                 System.out.println("Minimum withdrawal amount is 500.");
                 continue;
             }
 
-            if (value > accountBalance) {
+            if (value.compareTo(accountBalance)>0) {
                 System.out.println("Insufficient balance.");
                 continue;
             }
 
             break;
 
-        } catch (InputMismatchException e) {
+        } catch (NumberFormatException e) {
 
             System.out.println("Enter a valid amount.");
-            sc.nextLine();
         }
     }
 
@@ -170,7 +169,7 @@ public class Account{
     }
     if(AccountRepository.withdraw(accountNumber,value)){
     
-        accountBalance -= value;
+        accountBalance=accountBalance.subtract(value);
 
         System.out.println(value + " withdrawn successfully.");
         System.out.println("Available Balance: " + accountBalance);

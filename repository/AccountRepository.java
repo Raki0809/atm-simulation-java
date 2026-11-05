@@ -1,6 +1,8 @@
+
 package repository;
 
 import java.util.*;
+import java.math.BigDecimal;
 import model.Account;
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -11,7 +13,12 @@ import org.mindrot.jbcrypt.BCrypt;
 public class AccountRepository {
 
     public static boolean saveAccount(String accountNumber, String pinCode,
-                                   double accountBalance, boolean isLocked) throws SQLException{
+                                   BigDecimal accountBalance, boolean isLocked){
+
+        if(accountBalance.compareTo(new BigDecimal("2000")) < 0){
+            System.out.println("Account balance Should be greater than");
+            return false;
+        }
 
         String sql = "INSERT INTO accounts " +
                      "(AccountNumber, PinCode, AccountBalance, isLocked) " +
@@ -24,7 +31,7 @@ public class AccountRepository {
 
             ps.setString(1, accountNumber);
             ps.setString(2, hashedPin);
-            ps.setDouble(3, accountBalance);
+            ps.setBigDecimal(3, accountBalance);
             ps.setBoolean(4, isLocked);
             int rows=ps.executeUpdate();
 
@@ -37,25 +44,26 @@ public class AccountRepository {
             return false;
         }
     }
+
     //=================to check whether the account exist in the database ========================
+
     public static boolean accountExists(String accountNumber){
         String sql="Select AccountNumber from accounts where AccountNumber=?";
         
         try(Connection con =DatabaseConnection.getConnection();
             PreparedStatement ps=con.prepareStatement(sql)){
             
-            ps.setString(1,accountNumber);//1 represents the first parameter
+            ps.setString(1,accountNumber);
 
-            var rs=ps.executeQuery();// var adopts to the datatype
-            boolean exists=rs.next();//next checks if the result has any row r not ,if exists it returns true
+            var rs=ps.executeQuery();
+            boolean exists=rs.next();
 
-            
             return exists;
 
         }
         catch(Exception e){
             System.out.println("Failed to check account!");
-            e.printStackTrace();//prints the error so that we can debug ourself
+            e.printStackTrace();
             return false;
 
         }
@@ -77,7 +85,7 @@ public class AccountRepository {
             if(rs.next()){
                 String accountNo=rs.getString("AccountNumber");
                 String pin=rs.getString("PinCode");
-                double balance=rs.getDouble("AccountBalance");
+                BigDecimal balance=rs.getBigDecimal("AccountBalance");
                 boolean locked=rs.getBoolean("isLocked");
                 Timestamp lockedUntilTimestamp=rs.getTimestamp("lockedUntil");
                 LocalDateTime lockedUntil=null;
@@ -86,7 +94,7 @@ public class AccountRepository {
                     lockedUntil=lockedUntilTimestamp.toLocalDateTime();
                 }
 
-                return new Account(accountNo,pin ,balance,locked,lockedUntil,sc);
+                return new Account(accountNo,pin,balance,locked,lockedUntil,sc);
 
             }
             
@@ -138,7 +146,13 @@ public class AccountRepository {
 
     }
 
-    public static boolean deposit(String accountNumber,double amount){
+    public static boolean deposit(String accountNumber,BigDecimal amount){
+
+        if(amount.compareTo(new BigDecimal("500")) < 0){
+            System.out.println("Deposit amount must be greater than or equal to 500.");
+            return false;
+        }
+
         String sql="update accounts set AccountBalance=AccountBalance + ? where AccountNumber = ?";
         
         try(Connection con=DatabaseConnection.getConnection()){
@@ -147,7 +161,7 @@ public class AccountRepository {
             try{
                 try(PreparedStatement ps=con.prepareStatement(sql)){
 
-                    ps.setDouble(1,amount);
+                    ps.setBigDecimal(1,amount);
                     ps.setString(2,accountNumber);
 
                     int rows=ps.executeUpdate();
@@ -156,6 +170,7 @@ public class AccountRepository {
                         return false;
                     }
                 }
+
                 saveTransaction(con,accountNumber,"Deposit",amount);
                 con.commit();
                 return true;
@@ -173,35 +188,42 @@ public class AccountRepository {
         }
     }
 
-    public static boolean withdraw(String accountNumber,double amount){
+    public static boolean withdraw(String accountNumber,BigDecimal amount){
+        
+        if(amount.compareTo(new BigDecimal("500")) < 0){
+            System.out.println("Withdrawl Amount Should be greater than or equal to 500.");
+            return false;
+        }
 
-        String sql="Update accounts set AccountBalance=AccountBalance- ? where AccountNumber=? and  AccountBalance>= ?";
+        String sql="Update accounts set AccountBalance=AccountBalance- ? where AccountNumber=? and AccountBalance>= ?";
 
         try (Connection con=DatabaseConnection.getConnection()){
             con.setAutoCommit(false);
-            try{
-            try(PreparedStatement ps=con.prepareStatement(sql)){
-                
-                ps.setDouble(1,amount);
-                ps.setString(2,accountNumber);
-                ps.setDouble(3,amount);
 
-                int rows=ps.executeUpdate();
-                if(rows==0){
-                    con.rollback();
-                    return false;
+            try{
+                try(PreparedStatement ps=con.prepareStatement(sql)){
+                
+                    ps.setBigDecimal(1,amount);
+                    ps.setString(2,accountNumber);
+                    ps.setBigDecimal(3,amount);
+
+                    int rows=ps.executeUpdate();
+                    if(rows==0){
+                        con.rollback();
+                        return false;
+                    }
                 }
-            }
-            saveTransaction(con,accountNumber,"Withdraw",amount);
-            con.commit();
-            return true;
+
+                saveTransaction(con,accountNumber,"Withdraw",amount);
+                con.commit();
+                return true;
             }
             
             catch(Exception e){
-            con.rollback();
-            throw e;
+                con.rollback();
+                throw e;
+            }
         }
-    }
 
         catch(Exception e){
              System.out.println("Failed to withdraw amount");
@@ -213,27 +235,21 @@ public class AccountRepository {
 
     //=========================Transacation table updating ===========================
 
-
-    public static void saveTransaction(Connection con ,String accountNumber ,String TransactionType,double amount){
+    public static void saveTransaction(Connection con,String accountNumber,
+                                       String TransactionType,BigDecimal amount)
+                                       throws SQLException {
 
         String sql="insert into transactions (AccountNumber ,TransactionType ,Amount) values (?,?,?)";
 
-        
-            try(PreparedStatement ps=con.prepareStatement(sql)){
+        try(PreparedStatement ps=con.prepareStatement(sql)){
 
             ps.setString(1,accountNumber);
             ps.setString(2,TransactionType);
-            ps.setDouble(3,amount);
+            ps.setBigDecimal(3,amount);
 
             ps.executeUpdate();
 
         }
-
-        catch(Exception e){
-            System.out.println("Failed to save Transaction:) ");
-            e.printStackTrace();
-        }
-
     }
 
     public static void getTransactionHistory(String accountNumber){
@@ -256,7 +272,7 @@ public class AccountRepository {
                 while(rs.next()){
 
                     String type=rs.getString("TransactionType");
-                    double amount=rs.getDouble("Amount");
+                    BigDecimal amount=rs.getBigDecimal("Amount");
                     Timestamp time=rs.getTimestamp("TransactionTime");
 
                     System.out.println(count+" | "+type+" |Rs. "+amount+" | "+time);

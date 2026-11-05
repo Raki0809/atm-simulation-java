@@ -2,6 +2,7 @@ import java.util.*;
 import repository.AccountRepository;
 import java.time.LocalDateTime;
 import model.Account;
+import java.math.BigDecimal;
 
 class Main {
 
@@ -92,7 +93,7 @@ class Main {
         }
 
 
-        double accountBalance;
+        BigDecimal accountBalance;
 
         while (true) {
 
@@ -100,10 +101,9 @@ class Main {
 
             try {
 
-                accountBalance = sc.nextDouble();
-                sc.nextLine();
+                accountBalance = new BigDecimal(sc.nextLine());
 
-                if (accountBalance < 2000) {
+                if (accountBalance.compareTo(new BigDecimal("2000"))<0) {
 
                     System.out.println("Initial balance should be greater than or equal to 2000.");
 
